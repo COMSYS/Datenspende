@@ -1,7 +1,7 @@
 {
   "domain": "powercollect",
   "name": "PowerCollect",
-  "codeowners": ["@edexius"],
+  "codeowners": ["@volmer"],
   "dependencies": [],
   "documentation": "https://www.example.com",
   "integration_type": "hub",
