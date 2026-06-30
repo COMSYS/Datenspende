@@ -10,7 +10,7 @@ import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
 
-POWERCOLLECT_BASE_URL = "http://192.168.64.3:8080"
+POWERCOLLECT_BASE_URL = "https://datenspende.comsys.rwth-aachen.de"
 
 
 class PowerCollectError(Exception):
