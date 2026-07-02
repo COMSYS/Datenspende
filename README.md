@@ -1,2 +1,3 @@
-# powercollect-hacs
-The HACS repository for the PowerCollect integration.
+# COMSYS Datenspende
+
+The HACS repository for the COMSYS Datenspende (powercollect-hacs) integration.
