@@ -1,13 +1,14 @@
 {
   "domain": "powercollect",
-  "name": "PowerCollect",
-  "codeowners": ["@volmer"],
+  "name": "COMSYS Datenspende",
+  "codeowners": ["@edexius"],
   "dependencies": [],
-  "documentation": "https://www.example.com",
+  "documentation": "https://datenspende.comsys.rwth-aachen.de",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
   "requirements": [],
   "version": "0.0.1",
   "issue_tracker": "",
-  "config_flow": true
+  "config_flow": true,
+  "version": "0.1.0"
 }

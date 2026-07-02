@@ -6,7 +6,7 @@
     },
     "step": {
       "user": {
-        "title": "PowerCollect Setup",
+        "title": "COMSYS Datenspende Setup",
         "description": "Choose how you want to set up {name}.",
         "menu_options": {
           "signup": "Sign up",
@@ -141,7 +141,7 @@
     "step": {
       "main_menu": {
         "title": "Update configuration",
-        "description": "Modify your PowerCollect integration setup.",
+        "description": "Modify your COMSYS Datenspende integration setup.",
         "menu_options": {
           "change_api_key": "Change API key",
           "device_selection": "Manage physical devices",
@@ -151,14 +151,14 @@
       },
       "change_api_key": {
         "title": "Change API key",
-        "description": "Update the API key used to authenticate with the PowerCollect server.",
+        "description": "Update the API key used to authenticate with the COMSYS Datenspende server.",
         "data": {
           "api_key": "API key"
         }
       },
       "device_selection": {
         "title": "Physical devices",
-        "description": "Select the physical devices from which you want to donate data to PowerCollect.",
+        "description": "Select the physical devices from which you want to donate data to COMSYS Datenspende.",
         "data": {
           "observed_devices": "Devices to monitor"
         }
