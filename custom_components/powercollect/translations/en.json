@@ -130,7 +130,7 @@
                     "signin": "Sign in",
                     "signup": "Sign up"
                 },
-                "title": "PowerCollect Setup"
+                "title": "COMSYS Datenspende Setup"
             }
         }
     },
@@ -151,7 +151,7 @@
                 "data": {
                     "api_key": "API key"
                 },
-                "description": "Update the API key used to authenticate with the PowerCollect server.",
+                "description": "Update the API key used to authenticate with the COMSYS Datenspende server.",
                 "title": "Change API key"
             },
             "create_manual_meter": {
@@ -178,7 +178,7 @@
                 "data": {
                     "observed_devices": "Devices to monitor"
                 },
-                "description": "Select the physical devices from which you want to donate data to PowerCollect.",
+                "description": "Select the physical devices from which you want to donate data to COMSYS Datenspende.",
                 "title": "Physical devices"
             },
             "edit_custom_meter": {
@@ -192,7 +192,7 @@
                 "title": "Configure custom meter"
             },
             "main_menu": {
-                "description": "Modify your PowerCollect integration setup.",
+                "description": "Modify your COMSYS Datenspende integration setup.",
                 "menu_options": {
                     "change_api_key": "Change API key",
                     "custom_meters_overview": "Manage custom meters",
