@@ -8,6 +8,7 @@ import voluptuous as vol
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.config_entries import (
     ConfigEntry,
+    ConfigEntryBaseFlow,
     ConfigFlow,
     ConfigFlowResult,
     OptionsFlow,
@@ -73,7 +74,7 @@ class MeterListEntry:
         }
 
 
-class PowerCollectBaseFlow:
+class PowerCollectBaseFlow(ConfigEntryBaseFlow):
     """Shared Hub and Spoke logic for both Config and Options flows."""
 
     api_key: str | None
@@ -145,7 +146,7 @@ class PowerCollectBaseFlow:
             if dev_id not in battery_devices:
                 valid_device_ids.add(dev_id)
 
-        device_options = []
+        device_options: list[selector.SelectOptionDict] = []
         for dev_id in valid_device_ids:
             device = dev_reg.async_get(dev_id)
             if device:
@@ -206,6 +207,7 @@ class PowerCollectBaseFlow:
             power_entity = user_input.get("power_entity")
             energy_entity = user_input.get("energy_entity")
             voltage_entity = user_input.get("voltage_entity")
+            current_entity = user_input.get("current_entity")
 
             selected_entities = []
             if power_entity:
@@ -214,16 +216,24 @@ class PowerCollectBaseFlow:
                 selected_entities.append(energy_entity)
             if voltage_entity:
                 selected_entities.append(voltage_entity)
+            if current_entity:
+                selected_entities.append(current_entity)
 
             if meter_name in self.manual_meters:
                 errors["meter_name"] = "name_already_exists"
-            elif not power_entity and not energy_entity and not voltage_entity:
+            elif (
+                not power_entity
+                and not energy_entity
+                and not voltage_entity
+                and not current_entity
+            ):
                 errors["base"] = "at_least_one_entity_required"
             else:
                 self.manual_meters[meter_name] = selected_entities
                 return await self.async_step_custom_meters_overview()
 
-        # Find all voltage sensors belonging to battery-powered devices to exclude them
+        # Find all voltage/current sensors belonging to battery-powered devices
+        # to exclude them
         ent_reg = er.async_get(self.hass)
 
         # Find devices that have a battery sensor
@@ -236,21 +246,30 @@ class PowerCollectBaseFlow:
             == "battery"
         }
 
-        # Any voltage sensor belonging to a battery-powered device is excluded
-        exclude_voltage_entities = [
+        # Any voltage/current sensor belonging to a battery-powered device is excluded
+        exclude_battery_entities = [
             entity.entity_id
             for entity in ent_reg.entities.values()
             if entity.device_id
             and entity.device_id in battery_device_ids
             and entity.domain == "sensor"
             and str(entity.device_class or entity.original_device_class).lower()
-            == "voltage"
+            in {"voltage", "current"}
         ]
+
+        # Preserve the values the user submitted so a validation error does not
+        # clear the form.
+        suggested = user_input or {}
 
         schema = vol.Schema(
             {
-                vol.Required("meter_name"): selector.TextSelector(),
-                vol.Optional("power_entity"): selector.EntitySelector(
+                vol.Required(
+                    "meter_name", default=suggested.get("meter_name", "")
+                ): selector.TextSelector(),
+                vol.Optional(
+                    "power_entity",
+                    description={"suggested_value": suggested.get("power_entity")},
+                ): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         filter=selector.EntityFilterSelectorConfig(
                             domain="sensor",
@@ -259,7 +278,10 @@ class PowerCollectBaseFlow:
                         multiple=False,
                     )
                 ),
-                vol.Optional("energy_entity"): selector.EntitySelector(
+                vol.Optional(
+                    "energy_entity",
+                    description={"suggested_value": suggested.get("energy_entity")},
+                ): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         filter=selector.EntityFilterSelectorConfig(
                             domain="sensor",
@@ -268,13 +290,29 @@ class PowerCollectBaseFlow:
                         multiple=False,
                     )
                 ),
-                vol.Optional("voltage_entity"): selector.EntitySelector(
+                vol.Optional(
+                    "voltage_entity",
+                    description={"suggested_value": suggested.get("voltage_entity")},
+                ): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         filter=selector.EntityFilterSelectorConfig(
                             domain="sensor",
                             device_class=[SensorDeviceClass.VOLTAGE],
                         ),
-                        exclude_entities=exclude_voltage_entities or None,
+                        exclude_entities=exclude_battery_entities,
+                        multiple=False,
+                    )
+                ),
+                vol.Optional(
+                    "current_entity",
+                    description={"suggested_value": suggested.get("current_entity")},
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        filter=selector.EntityFilterSelectorConfig(
+                            domain="sensor",
+                            device_class=[SensorDeviceClass.CURRENT],
+                        ),
+                        exclude_entities=exclude_battery_entities,
                         multiple=False,
                     )
                 ),
@@ -293,7 +331,9 @@ class PowerCollectBaseFlow:
             self.current_editing_meter = user_input["selected_meter"]
             return await self.async_step_edit_custom_meter()
 
-        options = [{"value": k, "label": k} for k in self.manual_meters]
+        options: list[selector.SelectOptionDict] = [
+            {"value": k, "label": k} for k in self.manual_meters
+        ]
 
         schema = vol.Schema(
             {
@@ -321,6 +361,7 @@ class PowerCollectBaseFlow:
             power_entity = user_input.get("power_entity")
             energy_entity = user_input.get("energy_entity")
             voltage_entity = user_input.get("voltage_entity")
+            current_entity = user_input.get("current_entity")
 
             selected_entities = []
             if power_entity:
@@ -329,8 +370,15 @@ class PowerCollectBaseFlow:
                 selected_entities.append(energy_entity)
             if voltage_entity:
                 selected_entities.append(voltage_entity)
+            if current_entity:
+                selected_entities.append(current_entity)
 
-            if not power_entity and not energy_entity and not voltage_entity:
+            if (
+                not power_entity
+                and not energy_entity
+                and not voltage_entity
+                and not current_entity
+            ):
                 errors["base"] = "at_least_one_entity_required"
             elif (
                 meter_name != self.current_editing_meter
@@ -338,7 +386,10 @@ class PowerCollectBaseFlow:
             ):
                 errors["meter_name"] = "name_already_exists"
             else:
-                if meter_name != self.current_editing_meter:
+                if (
+                    self.current_editing_meter is not None
+                    and meter_name != self.current_editing_meter
+                ):
                     del self.manual_meters[self.current_editing_meter]
                     # Securely track renames so we don't lose the meter ID!
                     if self.current_editing_meter in self.custom_meter_map:
@@ -360,6 +411,7 @@ class PowerCollectBaseFlow:
         default_power_entity = None
         default_energy_entity = None
         default_voltage_entity = None
+        default_current_entity = None
 
         for entity_id in default_entities:
             entity = ent_reg.entities.get(entity_id)
@@ -373,8 +425,11 @@ class PowerCollectBaseFlow:
                     default_energy_entity = entity_id
                 elif device_class == "voltage":
                     default_voltage_entity = entity_id
+                elif device_class == "current":
+                    default_current_entity = entity_id
 
-        # Find all voltage sensors belonging to battery-powered devices to exclude them
+        # Find all voltage/current sensors belonging to battery-powered devices
+        # to exclude them
         battery_device_ids = {
             entity.device_id
             for entity in ent_reg.entities.values()
@@ -383,14 +438,14 @@ class PowerCollectBaseFlow:
             and str(entity.device_class or entity.original_device_class).lower()
             == "battery"
         }
-        exclude_voltage_entities = [
+        exclude_battery_entities = [
             entity.entity_id
             for entity in ent_reg.entities.values()
             if entity.device_id
             and entity.device_id in battery_device_ids
             and entity.domain == "sensor"
             and str(entity.device_class or entity.original_device_class).lower()
-            == "voltage"
+            in {"voltage", "current"}
         ]
 
         schema = vol.Schema(
@@ -431,7 +486,20 @@ class PowerCollectBaseFlow:
                             domain="sensor",
                             device_class=[SensorDeviceClass.VOLTAGE],
                         ),
-                        exclude_entities=exclude_voltage_entities or None,
+                        exclude_entities=exclude_battery_entities,
+                        multiple=False,
+                    )
+                ),
+                vol.Optional(
+                    "current_entity",
+                    description={"suggested_value": default_current_entity},
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        filter=selector.EntityFilterSelectorConfig(
+                            domain="sensor",
+                            device_class=[SensorDeviceClass.CURRENT],
+                        ),
+                        exclude_entities=exclude_battery_entities,
                         multiple=False,
                     )
                 ),
@@ -455,7 +523,9 @@ class PowerCollectBaseFlow:
                 del self.custom_meter_map[meter_to_delete]
             return await self.async_step_custom_meters_overview()
 
-        options = [{"value": k, "label": k} for k in self.manual_meters]
+        options: list[selector.SelectOptionDict] = [
+            {"value": k, "label": k} for k in self.manual_meters
+        ]
 
         schema = vol.Schema(
             {
@@ -473,7 +543,7 @@ class PowerCollectBaseFlow:
         )
 
 
-class PowerCollectConfigFlow(ConfigFlow, PowerCollectBaseFlow, domain=DOMAIN):
+class PowerCollectConfigFlow(PowerCollectBaseFlow, ConfigFlow, domain=DOMAIN):
     """Handle the initial config flow for Power Collect."""
 
     VERSION = 1
@@ -508,7 +578,7 @@ class PowerCollectConfigFlow(ConfigFlow, PowerCollectBaseFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle Step 1: Entry menu for Sign Up, Sign In, or API Key."""
-        self.context.setdefault("title_placeholders", {})["name"] = NAME
+        self.context["title_placeholders"] = {"name": NAME}
         return self.async_show_menu(
             step_id="user",
             menu_options=["signup", "signin", "api_key"],
@@ -529,6 +599,10 @@ class PowerCollectConfigFlow(ConfigFlow, PowerCollectBaseFlow, domain=DOMAIN):
             self._temp_password = user_input["password"]
             self._temp_secret = user_input.get("secret")
 
+            # The user must explicitly agree to participate and donate data.
+            if not user_input.get("consent"):
+                errors["base"] = "consent_required"
+
             api = PowerCollectAPI(
                 base_url=POWERCOLLECT_BASE_URL,
                 api_key=None,
@@ -536,14 +610,15 @@ class PowerCollectConfigFlow(ConfigFlow, PowerCollectBaseFlow, domain=DOMAIN):
                 session=async_get_clientsession(self.hass),
             )
             try:
-                self._temp_user_id = await api.sign_up(
-                    username=self._temp_username,
-                    email=self._temp_email,
-                    password=self._temp_password,
-                    secret=self._temp_secret,
-                )
-                self._temp_session_token = api.session_token
-                return await self.async_step_household()
+                if not errors:
+                    self._temp_user_id = await api.sign_up(
+                        username=self._temp_username,
+                        email=self._temp_email,
+                        password=self._temp_password,
+                        secret=self._temp_secret,
+                    )
+                    self._temp_session_token = api.session_token
+                    return await self.async_step_household()
             except PowerCollectAuthError as e:
                 _LOGGER.error("Auth error during sign up: %s", e)
                 err_msg = str(e)
@@ -591,6 +666,7 @@ class PowerCollectConfigFlow(ConfigFlow, PowerCollectBaseFlow, domain=DOMAIN):
                 ): selector.TextSelector(
                     selector.TextSelectorConfig(type=selector.TextSelectorType.EMAIL)
                 ),
+                vol.Required("consent", default=False): selector.BooleanSelector(),
                 vol.Optional("advanced_options"): section(
                     vol.Schema(
                         {
@@ -729,6 +805,7 @@ class PowerCollectConfigFlow(ConfigFlow, PowerCollectBaseFlow, domain=DOMAIN):
 
             try:
                 # 1. Create a household
+                assert self._temp_user_id is not None
                 household_id = await api.create_household(
                     userId=self._temp_user_id,
                     name=user_input["household_title"],
@@ -872,8 +949,8 @@ class PowerCollectConfigFlow(ConfigFlow, PowerCollectBaseFlow, domain=DOMAIN):
                 if device
                 else "Unknown Device"
             )
-            vendor = device.manufacturer if device else ""
-            model = device.model if device else ""
+            vendor = (device.manufacturer or "") if device else ""
+            model = (device.model or "") if device else ""
 
             entries = er.async_entries_for_device(ent_reg, device_id)
             entity_ids = [e.entity_id for e in entries if e.domain == "sensor"]
@@ -920,12 +997,13 @@ class PowerCollectConfigFlow(ConfigFlow, PowerCollectBaseFlow, domain=DOMAIN):
             "manual_meters": self.manual_meters,
             "meters": [meter.as_dict() for meter in self.meters],
         }
+        assert self.client_id is not None
         return self.async_create_entry(
             title=f"{NAME}: {self.client_id[:4]}", data=saved_data
         )
 
 
-class PowerCollectOptionsFlow(OptionsFlow, PowerCollectBaseFlow):
+class PowerCollectOptionsFlow(PowerCollectBaseFlow, OptionsFlow):
     """Handle options flow for Power Collect."""
 
     def __init__(self, config_entry: ConfigEntry) -> None:
@@ -1028,8 +1106,8 @@ class PowerCollectOptionsFlow(OptionsFlow, PowerCollectBaseFlow):
                 if device
                 else "Unknown Device"
             )
-            vendor = device.manufacturer if device else ""
-            model = device.model if device else ""
+            vendor = (device.manufacturer or "") if device else ""
+            model = (device.model or "") if device else ""
 
             entries = er.async_entries_for_device(ent_reg, device_id)
             entity_ids = [e.entity_id for e in entries if e.domain == "sensor"]

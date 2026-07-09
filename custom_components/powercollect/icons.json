@@ -1,0 +1,9 @@
+{
+  "entity": {
+    "sensor": {
+      "donated_data_points": {
+        "default": "mdi:counter"
+      }
+    }
+  }
+}

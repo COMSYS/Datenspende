@@ -7,6 +7,7 @@
         "error": {
             "at_least_one_entity_required": "You must select at least one entity (power, energy, or voltage).",
             "cannot_connect": "Failed to connect",
+            "consent_required": "You must agree to participate and donate your data to sign up.",
             "invalid_auth": "Invalid authentication",
             "invalid_secret": "Invalid secret",
             "invalid_username": "Invalid username",
@@ -29,6 +30,7 @@
             },
             "create_manual_meter": {
                 "data": {
+                    "current_entity": "Current entity",
                     "energy_entity": "Energy entity",
                     "meter_name": "Meter name",
                     "power_entity": "Power entity",
@@ -56,6 +58,7 @@
             },
             "edit_custom_meter": {
                 "data": {
+                    "current_entity": "Current entity",
                     "energy_entity": "Energy entity",
                     "meter_name": "Meter name",
                     "power_entity": "Power entity",
@@ -107,9 +110,13 @@
             },
             "signup": {
                 "data": {
+                    "consent": "I want to participate and donate my data",
                     "email": "Email",
                     "password": "Password",
                     "username": "Username"
+                },
+                "data_description": {
+                    "consent": "You must agree to participate and donate your data to create an account."
                 },
                 "description": "Sign up for a new {name} account to get started.",
                 "sections": {
@@ -131,6 +138,13 @@
                     "signup": "Sign up"
                 },
                 "title": "COMSYS Datenspende Setup"
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "donated_data_points": {
+                "name": "Donated data points"
             }
         }
     },
@@ -156,6 +170,7 @@
             },
             "create_manual_meter": {
                 "data": {
+                    "current_entity": "Assign current entity",
                     "energy_entity": "Assign energy entity",
                     "meter_name": "Meter name",
                     "power_entity": "Assign power entity",
@@ -183,6 +198,7 @@
             },
             "edit_custom_meter": {
                 "data": {
+                    "current_entity": "Current entity",
                     "energy_entity": "Energy entity",
                     "meter_name": "Meter name",
                     "power_entity": "Power entity",

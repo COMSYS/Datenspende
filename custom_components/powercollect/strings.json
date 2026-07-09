@@ -4,217 +4,233 @@
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
       "no_configured_items": "Setup cancelled: You must select at least one hardware device or create one custom meter to use this integration."
     },
+    "error": {
+      "at_least_one_entity_required": "You must select at least one entity (power, energy, or voltage).",
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "consent_required": "You must agree to participate and donate your data to sign up.",
+      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+      "invalid_secret": "Invalid secret",
+      "invalid_username": "Invalid username",
+      "name_already_exists": "A custom meter with this name already exists.",
+      "no_entities_selected": "You must assign at least one entity.",
+      "password_too_long": "Password too long",
+      "password_too_short": "Password too short",
+      "unknown": "[%key:common::config_flow::error::unknown%]",
+      "username_taken": "Username already taken",
+      "username_too_long": "Username too long",
+      "username_too_short": "Username too short"
+    },
     "step": {
-      "user": {
-        "title": "COMSYS Datenspende Setup",
-        "description": "Choose how you want to set up {name}.",
-        "menu_options": {
-          "signup": "Sign up",
-          "signin": "Sign in",
-          "api_key": "Use an existing API key"
-        }
-      },
-      "signup": {
-        "title": "Sign up",
-        "description": "Sign up for a new {name} account to get started.",
-        "data": {
-          "username": "Username",
-          "email": "Email",
-          "password": "Password"
-        },
-        "sections": {
-          "advanced_options": {
-            "name": "Advanced options",
-            "description": "If you received a sign-up key, you can enter it here.",
-            "data": {
-              "secret": "Sign-up key"
-            }
-          }
-        }
-      },
-      "signin": {
-        "title": "Sign in",
-        "description": "Log into your existing {name} account.",
-        "data": {
-          "username": "Username",
-          "password": "Password"
-        }
-      },
       "api_key": {
-        "title": "Provide API Key",
-        "description": "Enter your existing {name} API key.",
         "data": {
           "api_key": "API key"
-        }
+        },
+        "description": "Enter your existing {name} API key.",
+        "title": "Provide API Key"
       },
-      "household": {
-        "title": "Create household",
-        "description": "Please provide the following information for your household.\n*If you do not want to share some of this information, you can leave it blank.*",
+      "create_manual_meter": {
         "data": {
-          "household_title": "Name of the household",
-          "number_inhabitants": "Number of residents",
-          "zip": "ZIP code",
-          "country": "Country"
-        }
-      },
-      "main_menu": {
-        "title": "Configuration Menu",
-        "description": "To get started, you need to configure what you want to monitor.\nYou can choose devices directly exposed by Home Assistant, or combine multiple entities into a custom meter.",
-        "menu_options": {
-          "device_selection": "Select Hardware Devices",
-          "custom_meters_overview": "Manage custom meters",
-          "finish_flow": "Finish setup"
-        }
-      },
-      "device_selection": {
-        "title": "Hardware Devices",
-        "description": "Select the devices from which you want to donate data to {name}.",
-        "data": {
-          "observed_devices": "Devices to monitor"
-        }
+          "current_entity": "Current entity",
+          "energy_entity": "Energy entity",
+          "meter_name": "Meter name",
+          "power_entity": "Power entity",
+          "voltage_entity": "Voltage entity"
+        },
+        "description": "Group standalone entities into a single custom meter.",
+        "title": "Create custom meter"
       },
       "custom_meters_overview": {
-        "title": "Custom meters overview",
         "description": "Select an action below to manage your custom meters.",
         "menu_options": {
           "create_manual_meter": "Create a new custom meter",
-          "select_edit_custom_meter": "Edit or delete an existing custom meter",
+          "main_menu": "Back to main menu",
           "select_delete_custom_meter": "Delete an existing custom meter",
-          "main_menu": "Back to main menu"
-        }
+          "select_edit_custom_meter": "Edit or delete an existing custom meter"
+        },
+        "title": "Custom meters overview"
       },
-      "select_edit_custom_meter": {
-        "title": "Edit custom meter",
-        "description": "Select the custom meter you would like to edit or delete.",
+      "device_selection": {
         "data": {
-          "selected_meter": "Select Meter"
-        }
-      },
-      "create_manual_meter": {
-        "title": "Create custom meter",
-        "description": "Group standalone entities into a single custom meter.",
-        "data": {
-          "meter_name": "Meter name",
-          "power_entity": "Power entity",
-          "energy_entity": "Energy entity",
-          "voltage_entity": "Voltage entity"
-        }
+          "observed_devices": "Devices to monitor"
+        },
+        "description": "Select the devices from which you want to donate data to {name}.",
+        "title": "Hardware Devices"
       },
       "edit_custom_meter": {
-        "title": "Configure custom meter",
-        "description": "Modify this custom meter.",
         "data": {
+          "current_entity": "Current entity",
+          "energy_entity": "Energy entity",
           "meter_name": "Meter name",
           "power_entity": "Power entity",
-          "energy_entity": "Energy entity",
           "voltage_entity": "Voltage entity"
-        }
+        },
+        "description": "Modify this custom meter.",
+        "title": "Configure custom meter"
+      },
+      "household": {
+        "data": {
+          "country": "Country",
+          "household_title": "Name of the household",
+          "number_inhabitants": "Number of residents",
+          "zip": "ZIP code"
+        },
+        "description": "Please provide the following information for your household.\n*If you do not want to share some of this information, you can leave it blank.*",
+        "title": "Create household"
+      },
+      "main_menu": {
+        "description": "To get started, you need to configure what you want to monitor.\nYou can choose devices directly exposed by Home Assistant, or combine multiple entities into a custom meter.",
+        "menu_options": {
+          "custom_meters_overview": "Manage custom meters",
+          "device_selection": "Select Hardware Devices",
+          "finish_flow": "Finish setup"
+        },
+        "title": "Configuration Menu"
       },
       "select_delete_custom_meter": {
-        "title": "Delete custom meter",
-        "description": "Select a custom meter to delete.",
         "data": {
           "selected_meter": "Custom meter to delete"
-        }
+        },
+        "description": "Select a custom meter to delete.",
+        "title": "Delete custom meter"
+      },
+      "select_edit_custom_meter": {
+        "data": {
+          "selected_meter": "Select Meter"
+        },
+        "description": "Select the custom meter you would like to edit or delete.",
+        "title": "Edit custom meter"
+      },
+      "signin": {
+        "data": {
+          "password": "Password",
+          "username": "Username"
+        },
+        "description": "Log into your existing {name} account.",
+        "title": "Sign in"
+      },
+      "signup": {
+        "data": {
+          "consent": "I want to participate and donate my data",
+          "email": "Email",
+          "password": "Password",
+          "username": "Username"
+        },
+        "data_description": {
+          "consent": "You must agree to participate and donate your data to create an account."
+        },
+        "description": "Sign up for a new {name} account to get started.",
+        "sections": {
+          "advanced_options": {
+            "data": {
+              "secret": "Sign-up key"
+            },
+            "description": "If you received a sign-up key, you can enter it here.",
+            "name": "Advanced options"
+          }
+        },
+        "title": "Sign up"
+      },
+      "user": {
+        "description": "Choose how you want to set up {name}.",
+        "menu_options": {
+          "api_key": "Use an existing API key",
+          "signin": "Sign in",
+          "signup": "Sign up"
+        },
+        "title": "COMSYS Datenspende Setup"
       }
-    },
-    "error": {
-      "name_already_exists": "A custom meter with this name already exists.",
-      "no_entities_selected": "You must assign at least one entity.",
-      "at_least_one_entity_required": "You must select at least one entity (power, energy, or voltage).",
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
-      "password_too_short": "Password too short",
-      "password_too_long": "Password too long",
-      "username_too_short": "Username too short",
-      "username_too_long": "Username too long",
-      "invalid_username": "Invalid username",
-      "username_taken": "Username already taken",
-      "invalid_secret": "Invalid secret",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "donated_data_points": {
+        "name": "Donated data points"
+      }
     }
   },
   "options": {
     "abort": {
       "no_configured_items": "Configuration cancelled: You cannot save an empty setup."
     },
-    "step": {
-      "main_menu": {
-        "title": "Update configuration",
-        "description": "Modify your COMSYS Datenspende integration setup.",
-        "menu_options": {
-          "change_api_key": "Change API key",
-          "device_selection": "Manage physical devices",
-          "custom_meters_overview": "Manage custom meters",
-          "finish_flow": "Finish setup"
-        }
-      },
-      "change_api_key": {
-        "title": "Change API key",
-        "description": "Update the API key used to authenticate with the COMSYS Datenspende server.",
-        "data": {
-          "api_key": "API key"
-        }
-      },
-      "device_selection": {
-        "title": "Physical devices",
-        "description": "Select the physical devices from which you want to donate data to COMSYS Datenspende.",
-        "data": {
-          "observed_devices": "Devices to monitor"
-        }
-      },
-      "custom_meters_overview": {
-          "title": "Custom meters overview",
-          "description": "Select an action below to manage your custom meters.",
-        "menu_options": {
-          "create_manual_meter": "Create a new custom meter",
-          "select_edit_custom_meter": "Edit an existing custom meter",
-          "select_delete_custom_meter": "Delete an existing custom meter",
-          "main_menu": "Back to main menu"
-        }
-      },
-      "select_edit_custom_meter": {
-        "title": "Edit custom meter",
-        "description": "Select the custom meter you would like to edit.",
-        "data": {
-          "selected_meter": "Select meter"
-        }
-      },
-      "select_delete_custom_meter": {
-        "title": "Delete custom meter",
-        "description": "Select a custom meter to delete.",
-        "data": {
-          "selected_meter": "Custom meter to delete"
-        }
-      },
-      "create_manual_meter": {
-        "title": "Create custom meter",
-        "description": "Group standalone entities into a single custom meter.",
-        "data": {
-          "meter_name": "Meter name",
-          "power_entity": "Assign power entity",
-          "energy_entity": "Assign energy entity",
-          "voltage_entity": "Assign voltage entity"
-        }
-      },
-      "edit_custom_meter": {
-        "title": "Configure custom meter",
-        "description": "Modify this custom meter.",
-        "data": {
-          "meter_name": "Meter name",
-          "power_entity": "Power entity",
-          "energy_entity": "Energy entity",
-          "voltage_entity": "Voltage entity"
-        }
-      }
-    },
     "error": {
-      "name_already_exists": "A custom meter with this name already exists.",
-      "no_entities_selected": "You must assign at least one entity.",
       "at_least_one_entity_required": "You must select at least one entity (power, energy, or voltage).",
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
       "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+      "name_already_exists": "A custom meter with this name already exists.",
+      "no_entities_selected": "You must assign at least one entity.",
       "unknown": "[%key:common::config_flow::error::unknown%]"
+    },
+    "step": {
+      "change_api_key": {
+        "data": {
+          "api_key": "API key"
+        },
+        "description": "Update the API key used to authenticate with the COMSYS Datenspende server.",
+        "title": "Change API key"
+      },
+      "create_manual_meter": {
+        "data": {
+          "current_entity": "Assign current entity",
+          "energy_entity": "Assign energy entity",
+          "meter_name": "Meter name",
+          "power_entity": "Assign power entity",
+          "voltage_entity": "Assign voltage entity"
+        },
+        "description": "Group standalone entities into a single custom meter.",
+        "title": "Create custom meter"
+      },
+      "custom_meters_overview": {
+        "description": "Select an action below to manage your custom meters.",
+        "menu_options": {
+          "create_manual_meter": "Create a new custom meter",
+          "main_menu": "Back to main menu",
+          "select_delete_custom_meter": "Delete an existing custom meter",
+          "select_edit_custom_meter": "Edit an existing custom meter"
+        },
+        "title": "Custom meters overview"
+      },
+      "device_selection": {
+        "data": {
+          "observed_devices": "Devices to monitor"
+        },
+        "description": "Select the physical devices from which you want to donate data to COMSYS Datenspende.",
+        "title": "Physical devices"
+      },
+      "edit_custom_meter": {
+        "data": {
+          "current_entity": "Current entity",
+          "energy_entity": "Energy entity",
+          "meter_name": "Meter name",
+          "power_entity": "Power entity",
+          "voltage_entity": "Voltage entity"
+        },
+        "description": "Modify this custom meter.",
+        "title": "Configure custom meter"
+      },
+      "main_menu": {
+        "description": "Modify your COMSYS Datenspende integration setup.",
+        "menu_options": {
+          "change_api_key": "Change API key",
+          "custom_meters_overview": "Manage custom meters",
+          "device_selection": "Manage physical devices",
+          "finish_flow": "Finish setup"
+        },
+        "title": "Update configuration"
+      },
+      "select_delete_custom_meter": {
+        "data": {
+          "selected_meter": "Custom meter to delete"
+        },
+        "description": "Select a custom meter to delete.",
+        "title": "Delete custom meter"
+      },
+      "select_edit_custom_meter": {
+        "data": {
+          "selected_meter": "Select meter"
+        },
+        "description": "Select the custom meter you would like to edit.",
+        "title": "Edit custom meter"
+      }
     }
   }
 }
