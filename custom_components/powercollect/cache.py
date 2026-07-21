@@ -11,10 +11,9 @@ from .api import (
     PowerCollectAPI,
     PowerCollectAuthError,
     PowerCollectConnError,
-    PowerCollectDuplicateError,
     PowerCollectRequestError,
 )
-from .const import DOMAIN, MAX_CACHED_READINGS, STORAGE_VERSION
+from .const import DOMAIN, MAX_BATCH_READINGS, MAX_CACHED_READINGS, STORAGE_VERSION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -102,7 +101,7 @@ class SubmissionCache:
         self._schedule_save()
 
     async def async_flush(self) -> None:
-        """Submit queued readings oldest-first until empty or the server fails."""
+        """Submit queued readings oldest-first in batches until empty or the server fails."""
         # A running drain already picks up newly enqueued readings, so don't
         # queue up on the lock; this keeps flush tasks from piling up when
         # submissions fail slowly during an outage.
@@ -111,24 +110,19 @@ class SubmissionCache:
         async with self._lock:
             donated_before = self._donated
             while self._pending:
-                item = self._pending[0]
+                batch = self._pending[:MAX_BATCH_READINGS]
+                unknown_meters: list[str] = []
                 try:
-                    await self._api.submit_data(
-                        meterId=item["meter_id"],
-                        timestamp=item["timestamp"],
-                        power=item.get("power"),
-                        energy=item.get("energy"),
-                        voltage=item.get("voltage"),
-                        current=item.get("current"),
-                    )
-                except PowerCollectDuplicateError:
-                    _LOGGER.debug("Server already has reading, dropping it: %s", item)
+                    accepted, unknown_meters = await self._api.submit_batch(batch)
                 except PowerCollectRequestError as err:
+                    # The server will reject this batch the same way every time, so
+                    # keeping it would block everything queued behind it.
                     _LOGGER.error(
-                        "Dropping reading the server permanently rejects (%s): %s",
+                        "Dropping %s reading(s) the server permanently rejects: %s",
+                        len(batch),
                         err,
-                        item,
                     )
+                    accepted = 0
                 except (PowerCollectConnError, PowerCollectAuthError) as err:
                     # Server unreachable or rejecting the client as a whole:
                     # keep everything queued and retry on the next flush.
@@ -139,11 +133,24 @@ class SubmissionCache:
                     )
                     break
                 else:
-                    self._donated += 1
-                # The cap in async_add may drop head items while a submission
-                # is in flight; only pop if this item is still the head.
-                if self._pending and self._pending[0] is item:
-                    del self._pending[0]
+                    self._donated += accepted
+
+                if unknown_meters:
+                    _LOGGER.warning(
+                        "Server does not know meter(s) %s, dropping their readings",
+                        ", ".join(unknown_meters),
+                    )
+
+                # Identity rather than slicing, because the cap in async_add may have
+                # dropped head items while the submission was in flight.
+                submitted = {id(item) for item in batch}
+                unknown = set(unknown_meters)
+                self._pending = [
+                    reading
+                    for reading in self._pending
+                    if id(reading) not in submitted
+                    and reading["meter_id"] not in unknown
+                ]
             self._schedule_save()
             if self._donated != donated_before:
                 for listener in list(self._listeners):

@@ -2,6 +2,7 @@
 
 from datetime import datetime
 import logging
+from random import uniform
 
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN, Platform, UnitOfPower
 from homeassistant.core import (
@@ -15,7 +16,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import (
     async_call_later,
     async_track_state_change_event,
-    async_track_time_interval,
 )
 from homeassistant.util.unit_conversion import PowerConverter
 
@@ -27,7 +27,7 @@ from .api import (
 )
 from .cache import SubmissionCache, async_remove_cache
 from .config_flow import MeterListEntry
-from .const import CACHE_FLUSH_INTERVAL
+from .const import BATCH_INTERVAL_MAX, BATCH_INTERVAL_MIN
 from .data import PowerCollectConfigEntry, PowerCollectData
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,11 +63,6 @@ async def async_setup_entry(
 
     entry.runtime_data = PowerCollectData(api=api, cache=cache)
     await hass.config_entries.async_forward_entry_setups(entry, _PLATFORMS)
-
-    if cache.has_pending:
-        entry.async_create_background_task(
-            hass, cache.async_flush(), name="powercollect_flush_restored"
-        )
 
     meters = [
         MeterListEntry(
@@ -159,13 +154,10 @@ async def async_setup_entry(
                 return
             last_submitted[meter_id] = iso_timestamp
 
-            # 4. Queue the reading and drain the queue in the background.
-            # Enqueueing first means the reading survives (on disk) even if
-            # the internet connection or the server is down right now.
+            # 4. Queue the reading. The queue is drained by the batch timer below,
+            # so a reading never causes a request of its own. Enqueueing also means
+            # the reading survives (on disk) if the connection or the server is down.
             cache.async_add(meter_id, iso_timestamp, current_payload)
-            entry.async_create_background_task(
-                hass, cache.async_flush(), name=f"powercollect_push_{meter_id}"
-            )
 
         # Start the 0.1-second countdown timer
         debounce_timers[meter_id] = async_call_later(hass, 0.1, _collect_and_send)
@@ -183,14 +175,33 @@ async def async_setup_entry(
         )
         entry.async_on_unload(unsubscribe)
 
-    # Fallback retry so cached readings are also submitted during quiet
-    # periods when no new state changes trigger a flush.
-    async def _periodic_flush(now: datetime) -> None:
-        await cache.async_flush()
+    # Queued readings are submitted as one batch per interval. The interval is drawn
+    # anew every time so that installations do not drift into a shared tick and hit
+    # the server in bursts.
+    cancel_flush: CALLBACK_TYPE | None = None
 
-    entry.async_on_unload(
-        async_track_time_interval(hass, _periodic_flush, CACHE_FLUSH_INTERVAL)
-    )
+    async def _flush(now: datetime) -> None:
+        nonlocal cancel_flush
+        cancel_flush = None
+        await cache.async_flush()
+        _schedule_flush(uniform(BATCH_INTERVAL_MIN, BATCH_INTERVAL_MAX))
+
+    @callback
+    def _schedule_flush(delay: float) -> None:
+        nonlocal cancel_flush
+        cancel_flush = async_call_later(hass, delay, _flush)
+
+    # Readings restored from disk are submitted by the first flush rather than right
+    # away, and that first delay covers the whole interval, so that many installations
+    # restarting at once do not all submit at the same moment.
+    _schedule_flush(uniform(0, BATCH_INTERVAL_MAX))
+
+    @callback
+    def _cancel_flush() -> None:
+        if cancel_flush is not None:
+            cancel_flush()
+
+    entry.async_on_unload(_cancel_flush)
 
     # Clean up any timers if the integration is unloaded
     @callback

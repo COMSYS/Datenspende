@@ -4,14 +4,17 @@ This module provides the PowerCollectAPI class for interacting with the PowerCol
 including device registration and power data submission.
 """
 
+from datetime import datetime
 import logging
-from typing import NoReturn
+from typing import Any, NoReturn
 
 import aiohttp
 
 _LOGGER = logging.getLogger(__name__)
 
 POWERCOLLECT_BASE_URL = "https://datenspende.comsys.rwth-aachen.de"
+
+MEASUREMENT_FIELDS = ("power", "energy", "voltage", "current")
 
 
 class PowerCollectError(Exception):
@@ -110,6 +113,46 @@ async def handle_api_error(response: aiohttp.ClientResponse) -> NoReturn:
     )
 
 
+def _parse_timestamp(timestamp: str) -> datetime:
+    """Parse a timestamp as written by the cache."""
+    return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+
+
+def columnar_payload(readings: list[dict[str, Any]]) -> dict[str, Any]:
+    """Group readings per meter into parallel arrays for the batch endpoint.
+
+    Instead of repeating the meter ID and a full timestamp for every reading, each meter
+    carries one array of second offsets from a shared base timestamp plus one array per
+    measurement. A meter that has no value for a channel at some index gets a None there,
+    so every channel array stays aligned with the offsets.
+    """
+    base = _parse_timestamp(readings[0]["timestamp"])
+    meters: dict[str, dict[str, Any]] = {}
+
+    for reading in readings:
+        meter = meters.setdefault(
+            reading["meter_id"], {"id": reading["meter_id"], "dt": []}
+        )
+        index = len(meter["dt"])
+        meter["dt"].append(
+            int((_parse_timestamp(reading["timestamp"]) - base).total_seconds())
+        )
+        for field in MEASUREMENT_FIELDS:
+            if (value := reading.get(field)) is None:
+                continue
+            column = meter.setdefault(field, [])
+            column.extend([None] * (index - len(column)))
+            column.append(value)
+
+    # Channels whose last readings carried no value still have to match the offsets.
+    for meter in meters.values():
+        for field in MEASUREMENT_FIELDS:
+            if (column := meter.get(field)) is not None:
+                column.extend([None] * (len(meter["dt"]) - len(column)))
+
+    return {"t0": readings[0]["timestamp"], "meters": list(meters.values())}
+
+
 class PowerCollectAPI:
     """Client for interacting with the PowerCollect API."""
 
@@ -135,6 +178,9 @@ class PowerCollectAPI:
         )
 
         self.timeout = aiohttp.ClientTimeout(total=5)  # Set a timeout for API requests
+        # A batch carries up to a few thousand readings, so it needs more room than the
+        # small request/response endpoints above.
+        self.batch_timeout = aiohttp.ClientTimeout(total=30)
 
     @property
     def _api_headers(self) -> dict[str, str]:
@@ -272,6 +318,34 @@ class PowerCollectAPI:
             ) as response:
                 if response.status == 201:
                     return
+                await handle_api_error(response)
+        except (aiohttp.ClientError, TimeoutError) as e:
+            raise PowerCollectConnError(f"Connection error: {e}") from e
+
+    async def submit_batch(
+        self, readings: list[dict[str, Any]]
+    ) -> tuple[int, list[str]]:
+        """Submit readings for any number of meters in a single request.
+
+        Returns the number of newly stored readings and the IDs of meters the server does
+        not know. Submission is idempotent, so readings the server already has are silently
+        skipped and simply not counted.
+        """
+        if not readings:
+            return 0, []
+
+        url = f"{self.base_url}/clients/{self.client_id}/data"
+
+        try:
+            async with self.session.post(
+                url,
+                json=columnar_payload(readings),
+                headers=self._api_headers,
+                timeout=self.batch_timeout,
+            ) as response:
+                if response.status == 201:
+                    data = await response.json(content_type=None)
+                    return data.get("accepted", 0), data.get("unknownMeters", [])
                 await handle_api_error(response)
         except (aiohttp.ClientError, TimeoutError) as e:
             raise PowerCollectConnError(f"Connection error: {e}") from e
