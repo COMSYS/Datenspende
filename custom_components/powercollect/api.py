@@ -4,7 +4,11 @@ This module provides the PowerCollectAPI class for interacting with the PowerCol
 including device registration and power data submission.
 """
 
+import asyncio
 from datetime import datetime
+from functools import partial
+import gzip
+import json
 import logging
 from typing import Any, NoReturn
 
@@ -15,6 +19,9 @@ _LOGGER = logging.getLogger(__name__)
 POWERCOLLECT_BASE_URL = "https://datenspende.comsys.rwth-aachen.de"
 
 MEASUREMENT_FIELDS = ("power", "energy", "voltage", "current")
+
+# Below this size the gzip header and trailer cost more than the compression saves.
+GZIP_MIN_BYTES = 1024
 
 
 class PowerCollectError(Exception):
@@ -322,6 +329,12 @@ class PowerCollectAPI:
         except (aiohttp.ClientError, TimeoutError) as e:
             raise PowerCollectConnError(f"Connection error: {e}") from e
 
+    @staticmethod
+    async def _compress(body: bytes) -> bytes:
+        """Compress in the executor, so a large batch never blocks the event loop."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, partial(gzip.compress, body, 6))
+
     async def submit_batch(
         self, readings: list[dict[str, Any]]
     ) -> tuple[int, list[str]]:
@@ -335,12 +348,23 @@ class PowerCollectAPI:
             return 0, []
 
         url = f"{self.base_url}/clients/{self.client_id}/data"
+        headers = {**self._api_headers, "Content-Type": "application/json"}
+
+        body = json.dumps(
+            columnar_payload(readings), separators=(",", ":")
+        ).encode()
+        if len(body) >= GZIP_MIN_BYTES:
+            # Batches are long runs of similar numbers under repeated keys, which is
+            # what gzip is good at. TLS already provides the encryption; this is purely
+            # about how much goes over the wire.
+            body = await self._compress(body)
+            headers["Content-Encoding"] = "gzip"
 
         try:
             async with self.session.post(
                 url,
-                json=columnar_payload(readings),
-                headers=self._api_headers,
+                data=body,
+                headers=headers,
                 timeout=self.batch_timeout,
             ) as response:
                 if response.status == 201:
