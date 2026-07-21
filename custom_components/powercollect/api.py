@@ -4,7 +4,6 @@ This module provides the PowerCollectAPI class for interacting with the PowerCol
 including device registration and power data submission.
 """
 
-import datetime
 import logging
 from typing import NoReturn
 
@@ -63,7 +62,7 @@ async def handle_api_error(response: aiohttp.ClientResponse) -> NoReturn:
     if status == 405 and code == "method_not_allowed":
         raise PowerCollectRequestError(f"Method not allowed: {message}")
 
-    if status == 409 and code == "duplicate_entry":
+    if code == "duplicate_entry":
         raise PowerCollectDuplicateError(f"Duplicate entry: {message}")
 
     if status == 500 and code == "internal_server_error":
@@ -164,7 +163,7 @@ class PowerCollectAPI:
                     if self.client_id is None:
                         raise PowerCollectError("Client ID not found in response")
                     return self.client_id
-                raise PowerCollectError(f"Failed to get client ID: {response}")
+                await handle_api_error(response)
         except (aiohttp.ClientError, TimeoutError) as e:
             raise PowerCollectConnError(f"Connection error: {e}") from e
 
@@ -235,6 +234,8 @@ class PowerCollectAPI:
             ) as response:
                 if response.status == 200:
                     return await response.json(content_type=None)
+                if response.status == 404:
+                    return []
                 await handle_api_error(response)
         except (aiohttp.ClientError, TimeoutError) as e:
             raise PowerCollectConnError(f"Connection error: {e}") from e
@@ -277,14 +278,19 @@ class PowerCollectAPI:
 
     # WEB endpoints
     async def sign_up(
-        self, username: str, email: str | None, password: str, secret: str | None
+        self,
+        username: str,
+        email: str | None,
+        password: str,
+        secret: str | None,
+        consent: bool,
     ) -> str:
         """Sign up a new user."""
         if username is None or password is None:
             raise ValueError("Both username and password must be provided")
 
         url = f"{self.base_url}/web/auth/sign-up/username"
-        payload = {"username": username, "password": password}
+        payload: dict[str, str | bool] = {"username": username, "password": password}
 
         if email is not None and email != "":
             payload["email"] = email
@@ -292,11 +298,9 @@ class PowerCollectAPI:
         if secret is not None and secret != "":
             payload["secret"] = secret
 
-        # Generate ISO timestamp and add it to the payload
-
-        payload["donationPermittedTimestamp"] = datetime.datetime.now(
-            datetime.UTC
-        ).isoformat()
+        if not consent:
+            raise PowerCollectAuthError("User must provide consent to sign up")
+        payload["consent"] = consent
 
         try:
             async with self.session.post(
@@ -322,7 +326,7 @@ class PowerCollectAPI:
             async with self.session.post(
                 url, json=payload, headers=self.web_header, timeout=self.timeout
             ) as response:
-                if response.status == 201:
+                if response.status == 200:
                     response_data = await response.json(content_type=None)
                     self.session_token = response_data["token"]
                     return response_data["user"]["id"]
@@ -421,7 +425,7 @@ class PowerCollectAPI:
                 url, headers=headers, timeout=self.timeout
             ) as response:
                 if response.status == 200:
-                    return await response.json(content_type="application/json")
+                    return await response.json(content_type=None)
                 await handle_api_error(response)
         except (aiohttp.ClientError, TimeoutError) as e:
             raise PowerCollectConnError(f"Connection error: {e}") from e

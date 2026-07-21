@@ -616,6 +616,7 @@ class PowerCollectConfigFlow(PowerCollectBaseFlow, ConfigFlow, domain=DOMAIN):
                         email=self._temp_email,
                         password=self._temp_password,
                         secret=self._temp_secret,
+                        consent=True,  # User explicitly agreed to consent in the form
                     )
                     self._temp_session_token = api.session_token
                     return await self.async_step_household()
